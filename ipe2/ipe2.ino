@@ -8,6 +8,7 @@
 // BSD license, all text above must be included in any redistribution.
 
 #include <RGBmatrixPanel.h>
+#include <Wire.h>
 
 // Most of the signal pins are configurable, but the CLK pin has some
 // special constraints.  On 8-bit AVR boards it must be on PORTB...
@@ -36,8 +37,15 @@ int j = 0;
 
 int reversei = 0;
 int reversej = 0;
+
+int frameCount = 0;
+
+int num = 0;
+
  
 void setup() {
+  Wire.begin();
+  
   matrix.begin();
 
 
@@ -77,6 +85,26 @@ void setup() {
 }
 
 void loop() {
+  boolean didSerialInput = false;
+
+
+  while(Serial.available() >  0){
+    didSerialInput = true;
+    char c = Serial.read();
+    num = num*10 + c-48;
+    Serial.println(num);
+    if(num > 255) num = 0;
+  }
+
+  if(didSerialInput){
+    Wire.beginTransmission(8);
+    Wire.write(num);
+    int succeed = Wire.endTransmission(8);
+    Serial.println((succeed == 0) ? "send succeed": "send failed");
+    num = 0;
+  }
+
+  
   for(int i2 = 0; i2 < 33 ; i2++){
     for(int j2 = 0; j2 < 17; j2++){
       matrix.drawPixel(i2, j2, matrix.Color333(0, 0, 0));
@@ -84,14 +112,14 @@ void loop() {
   }
   // Do nothing -- image doesn't change
 
-  Serial.print("i = ");
-  Serial.print(i);
-  Serial.print("j = ");
-  Serial.print(j);
-  Serial.print(" reversei = ");
-  Serial.println(reversei);
-  Serial.print(" reversej = ");
-  Serial.println(reversej);
+//  Serial.print("i = ");
+//  Serial.print(i);
+//  Serial.print("j = ");
+//  Serial.print(j);
+//  Serial.print(" reversei = ");
+//  Serial.println(reversei);
+//  Serial.print(" reversej = ");
+//  Serial.println(reversej);//
   if(i >= 31){
       reversei = 1;
   }else if(i <= 0){
@@ -116,6 +144,19 @@ void loop() {
   }else{
     j--;
   }
- 
+
+  if(frameCount % 60 == 0){
+  Wire.requestFrom(8, 1);
+  while(Wire.available()){
+    char c = Wire.read();
+    Serial.print("gotten value c: ");
+    Serial.println((int)c);
+    int temperature = c;
+    Serial.print("temperature: ");
+    Serial.println(temperature);
+  }
+  }
+
+  frameCount++;
   delay(100);
 }
